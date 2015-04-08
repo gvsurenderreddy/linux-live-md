@@ -5,7 +5,7 @@
 
 . ../.config
 
-INITRAMFS=/tmp/$LIVEKITNAME-initramfs-$$
+INITRAMFS=/mnt/$LIVEKITNAME-initramfs-$$
 
 # copy file to initramfs tree, including
 # all library dependencies (as shown by ldd)
@@ -43,8 +43,8 @@ cd static
 ./update
 cd ..
 
-cp static/{busybox,mount.dynfilefs,mount.ntfs-3g,eject} $INITRAMFS/bin
-chmod a+x $INITRAMFS/bin/{busybox,mount.*,eject}
+cp static/{busybox,mount,eject,dmsetup} $INITRAMFS/bin
+chmod a+x $INITRAMFS/bin/{busybox,mount,eject,dmsetup}
 
 $INITRAMFS/bin/busybox | grep , | grep -v Copyright | tr "," " " | while read LINE; do
    for TOOL in $LINE; do
@@ -73,7 +73,7 @@ copy_including_deps /$LMK/kernel/drivers/staging/zram
 copy_including_deps /$LMK/kernel/drivers/block/loop.*
 copy_including_deps /$LMK/kernel/fs/fuse
 
-copy_including_deps /$LMK/kernel/fs/aufs/aufs.ko
+#copy_including_deps /$LMK/kernel/fs/aufs/aufs.ko
 
 copy_including_deps /$LMK/kernel/drivers/ata/ata_piix.ko
 copy_including_deps /$LMK/kernel/lib/crc-t10dif.ko
@@ -83,12 +83,15 @@ copy_including_deps /$LMK/kernel/fs/fat/fat.ko
 copy_including_deps /$LMK/kernel/fs/fat/vfat.ko
 copy_including_deps /$LMK/kernel/fs/nls/nls_utf8.ko
 
+copy_including_deps /$LMK/kernel/fs/ext2/ext2.ko
 copy_including_deps /$LMK/kernel/fs/ext3/ext3.ko
 copy_including_deps /$LMK/kernel/fs/jbd/jbd.ko
 copy_including_deps /$LMK/kernel/fs/mbcache.ko
 
 copy_including_deps /$LMK/kernel/drivers/net/mii.ko
 copy_including_deps /$LMK/kernel/drivers/net/ethernet/realtek/8139cp.ko
+
+copy_including_deps /$LMK/kernel/drivers/md
 
 copy_including_deps /$LMK/modules.*
 

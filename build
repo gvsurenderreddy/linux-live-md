@@ -30,49 +30,31 @@ cd ..
 rm -Rf "$LIVEKITDATA"
 BOOT="$LIVEKITDATA"/"$LIVEKITNAME"/boot
 mkdir -p "$BOOT"
-mkdir -p "$BOOT"/../changes
-mkdir -p "$BOOT"/../modules
+#mkdir -p "$BOOT"/../changes
+#mkdir -p "$BOOT"/../modules
 mv "$INITRAMFS" $BOOT/initrfs.img
 cp bootfiles/* $BOOT
 cat bootfiles/syslinux.cfg | sed -r "s:/boot/:/$LIVEKITNAME/boot/:" > $BOOT/syslinux.cfg
 cat bootfiles/bootinst.bat | sed -r "s:/boot/:/$LIVEKITNAME/boot/:" | sed -r "s:\\\\boot\\\\:\\\\$LIVEKITNAME\\\\boot\\\\:" > $BOOT/bootinst.bat
-cp $VMLINUZ $BOOT/
+cp /boot/$VMLINUZ-$KERNEL $BOOT/$VMLINUZ
 
-if [ -d sb ]; then
-   cp sb/* $LIVEKITDATA/$LIVEKITNAME/
-else
-   # create compressed bundles
-   for i in $MKMOD; do
-      #mksquashfs /$i $LIVEKITDATA/$LIVEKITNAME/$i.$BEXT -comp xz -b 512k -keep-as-directory
-      mksquashfs /$i $LIVEKITDATA/$LIVEKITNAME/$i.$BEXT -b 512k -keep-as-directory
-   done
-fi
 
-# copy rootcopy folder
-if [ -d rootcopy ]; then
-   cp -a rootcopy $LIVEKITDATA/$LIVEKITNAME/
-fi
+# create rootfs filesystem && squashfs file
+SQUASHFS_DIR=$LIVEKITDATA/$LIVEKITNAME/squashfs_dir
+ROOTFS_FILE=$SQUASHFS_DIR/rootfs
+ROOTFS_MOUNTPOINT=$LIVEKITDATA/$LIVEKITNAME/tmp
+mkdir -p $SQUASHFS_DIR
+dd if=/dev/zero of=$ROOTFS_FILE bs=1G seek=100 count=0
+mke2fs -F $ROOTFS_FILE
 
-# create ISO for CD image
-echo "Creating ISO file for CD boot..."
-cd "$LIVEKITDATA"
-TARGET=/mnt/z
-if [ ! -d $TARGET ]; then
-   TARGET=/tmp
-fi
+mkdir $ROOTFS_MOUNTPOINT
+mount $ROOTFS_FILE $ROOTFS_MOUNTPOINT -o loop
+for i in $MKMOD; do
+	cp -r /$i $ROOTFS_MOUNTPOINT
+done
+umount $ROOTFS_MOUNTPOINT
+rmdir $ROOTFS_MOUNTPOINT
 
-ARCH=$(uname -m)
+mksquashfs $SQUASHFS_DIR $LIVEKITDATA/$LIVEKITNAME/squashRootfs
+rm -rf $SQUASHFS_DIR
 
-mkisofs -o "$TARGET/$LIVEKITNAME-$ARCH.iso" -v -J -R -D -A "$LIVEKITNAME" -V "$LIVEKITNAME" \
--no-emul-boot -boot-info-table -boot-load-size 4 \
--b "$LIVEKITNAME"/boot/isolinux.bin -c "$LIVEKITNAME"/boot/isolinux.boot . \
->/dev/null 2>/dev/null
-
-cat "$CWD/bootinfo.txt" | fgrep -v "#" | sed -r "s/mylinux/$LIVEKITNAME/" | sed -r "s/\$//" > readme.txt
-echo "Creating ZIP for USB boot..."
-rm -f "$TARGET/$LIVEKITNAME-$ARCH.zip"
-zip -0 -r "$TARGET/$LIVEKITNAME-$ARCH.zip" *
-
-cd ..
-rm -Rf "$LIVEKITDATA"
-echo "finished. Find your result in $TARGET"
